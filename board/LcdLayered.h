@@ -32,8 +32,8 @@
 *************************************************************************/
 #define LCD_NUM_LAYERS 4
 
-#define SEND_A_LAYER 3
-#define SEND_B_LAYER 2
+#define LCD_LAYER_TIMER 3
+#define LCD_LAYER_LAP 2
 #define SEND_C_LAYER 1
 #define SEND_D_LAYER 0
 

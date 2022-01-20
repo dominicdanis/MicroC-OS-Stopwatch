@@ -17,6 +17,8 @@ static OS_TCB appTaskStartTCB;
 static OS_TCB appTimerControlTaskTCB;
 static OS_TCB appTimerDisplayTaskTCB;
 
+static OS_MUTEX appTimerCountKey;
+
 /*****************************************************************************************
 * Allocate task stack space.
 *****************************************************************************************/
@@ -31,6 +33,13 @@ static void  appStartTask(void *p_arg);
 static void  appTimerControlTask(void *p_arg);
 static void  appTimerDisplayTask(void *p_arg);
 
+static void appSetTimerCount(INT32U timer_val);
+static INT32U appGetTimerCount();
+
+
+typedef enum {CLEAR,COUNT,HOLD} SW_STATE;
+static SW_STATE TimeState;
+static INT32U appTimerCount;
 /*****************************************************************************************
 * main()
 *****************************************************************************************/
@@ -39,23 +48,23 @@ void main(void) {
     OS_ERR  os_err;
 
     K65TWR_BootClock();
-    CPU_IntDis();               /* Disable all interrupts, OS will enable them  */
+    CPU_IntDis();
 
-    OSInit(&os_err);                    /* Initialize uC/OS-III                         */
-    OSTaskCreate(&appTaskStartTCB,                  /* Address of TCB assigned to task */
-                 "Start Task",                      /* Name you want to give the task */
-                 appStartTask,                      /* Address of the task itself */
-                 (void *) 0,                        /* p_arg is not used so null ptr */
-                 APP_CFG_TASK_START_PRIO,           /* Priority you assign to the task */
-                 &appTaskStartStk[0],               /* Base address of task�s stack */
-                 (APP_CFG_TASK_START_STK_SIZE/10u), /* Watermark limit for stack growth */
-                 APP_CFG_TASK_START_STK_SIZE,       /* Stack size */
-                 0,                                 /* Size of task message queue */
-                 0,                                 /* Time quanta for round robin */
-                 (void *) 0,                        /* Extension pointer is not used */
-                 (OS_OPT_TASK_NONE), /* Options */
-                 &os_err);                          /* Ptr to error code destination */
-    OSStart(&os_err);               /*Start multitasking(i.e. give control to uC/OS)    */
+    OSInit(&os_err);
+    OSTaskCreate(&appTaskStartTCB,
+                 "Start Task",
+                 appStartTask,
+                 (void *) 0,
+                 APP_CFG_TASK_START_PRIO,
+                 &appTaskStartStk[0],
+                 (APP_CFG_TASK_START_STK_SIZE/10u),
+                 APP_CFG_TASK_START_STK_SIZE,
+                 0,
+                 0,
+                 (void *) 0,
+                 (OS_OPT_TASK_NONE),
+                 &os_err);
+    OSStart(&os_err);
 }
 
 /*****************************************************************************************
@@ -70,6 +79,12 @@ static void appStartTask(void *p_arg) {
 
     OS_CPU_SysTickInitFreq(SYSTEM_CLOCK);
     GpioDBugBitsInit();
+
+    OSMutexCreate(&appTimerCountKey,
+                  "Timer Count Mutex",
+                  &os_err);
+
+    //DISPLAY THE CHECKSUM SOMEWHERE IN HERE
 
     OSTaskCreate(&appTimerControlTaskTCB,
                 "appTimerControl ",
@@ -109,11 +124,42 @@ static void appStartTask(void *p_arg) {
 static void appTimerControlTask(void *p_arg){
 
     OS_ERR os_err;
+    INT8U kchar;
     (void)p_arg;
     
     while(1){
-    
-
+        DB0_TURN_OFF();
+        kchar = KeyPend(0,&os_err);
+        DB0_TURN_ON();
+        switch (kchar){
+            case '*':
+            switch(TimeState){
+                case CLEAR:
+                    TimeState = COUNT;
+                    //Tell counter module to increment every 10ms
+                    break;
+                case COUNT:
+                    TimeState = HOLD;
+                    //Tell counter module to stop counting
+                    break;
+                case HOLD:
+                    TimeState = CLEAR;
+                    //Tell counter module to stop counting (should already be doing that)
+                    break;
+                default:
+                    TimeState = CLEAR;
+                    //Tell counter module to stop counting
+                    break;
+            }
+                break;
+            case '#':
+                //check if the display already has something
+                //if it doesn't put the current display there
+                //if it does, clear
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -123,12 +169,32 @@ static void appTimerControlTask(void *p_arg){
 static void appTimerDisplayTask(void *p_arg){
 
     OS_ERR os_err;
+    INT32U dispNums;
     (void)p_arg;
 
     while(1) {
-
+        DB1_TURN_OFF();
+        //dispNums = SWCountPend();
+        DB1_TURN_ON();
+        //Figure out how to display - what are we recieving in that 32 bit int?
 
     }
 }
 
 /********************************************************************************/
+
+static void appSetTimerCount(INT32U timer_val){
+    OS_ERR os_err;
+    OSMutexPend(&appTimerCountKey, 0, OS_OPT_PEND_BLOCKING, (CPU_TS *)0, &os_err);
+    appTimerCount = timer_val;
+    OSMutexPost(&appTimerCountKey, OS_OPT_POST_NONE, &os_err);
+}
+
+static INT32U appGetTimerCount(){
+    OS_ERR os_err;
+    INT32U timer_val;
+    OSMutexPend(&appTimerCountKey, 0, OS_OPT_PEND_BLOCKING, (CPU_TS *)0, &os_err);
+    timer_val = appTimerCount;
+    OSMutexPost(&appTimerCountKey, OS_OPT_POST_NONE, &os_err);
+    return timer_val;
+}
