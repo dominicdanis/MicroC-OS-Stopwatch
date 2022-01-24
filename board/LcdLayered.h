@@ -30,12 +30,11 @@
 *              Range from 0 to (LCD_NUM_LAYERS - 1)                      *
 *              Arranged from largest number on top, down to 0 on bottom. *
 *************************************************************************/
-#define LCD_NUM_LAYERS 4
+#define LCD_NUM_LAYERS 3
 
-#define LCD_LAYER_TIMER 3
-#define LCD_LAYER_LAP 2
-#define SEND_C_LAYER 1
-#define SEND_D_LAYER 0
+#define LCD_LAYER_TIMER 2
+#define LCD_LAYER_LAP 1
+#define LCD_LAYER_STARTUP 0
 
 /*************************************************************************
 * LCD Rows and Columns Defines
@@ -92,6 +91,10 @@ void LcdDispByte(INT8U row,INT8U col,INT8U layer,INT8U byte);
                         
 void LcdDispDecWord(INT8U row, INT8U col, INT8U layer, INT32U binword, INT8U field, LCD_MODE mode);
 void LcdDispClear(INT8U layer);
+
+
+//IS THIS OKAY?
+void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib);
 
 void LcdDispClrLine(INT8U row, INT8U layer);
 INT8U LcdCursor(INT8U row, INT8U col, INT8U layer, INT8U on, INT8U blink);

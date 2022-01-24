@@ -88,6 +88,9 @@ static void lcdWriteBuffer(LCD_BUFFER *buffer);
 static void lcdMoveCursor(INT8U row, INT8U col);
 static void lcdCursorDispMode(INT8U on, INT8U blink);
 
+//IS THIS OKAY
+static INT8C lcdHtoA(INT8U hnib);
+
 /*************************************************************************
   MicroC/OS Resources
 *************************************************************************/
@@ -941,4 +944,34 @@ static void lcdDly500ns(void){
     INT32U i;
     for(i=0;i<8;i++){
     }
+}
+
+
+//IS THIS OKAY?
+void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib) {
+    INT8U currentnib;
+    INT8U col_increment = 0;
+    // Limit number of nibbles
+    if((num_nib > 0) && (num_nib <= 8)){
+        currentnib = num_nib;
+        while(currentnib > 0){
+            LcdDispChar(row, col+col_increment, layer, lcdHtoA((word>>((currentnib-1)*4))&0x0F));
+            currentnib--;
+            col_increment++;
+        }
+    }else{
+        LcdDispString(row, col, layer, "HexNibError");
+    }
+
+}
+
+static INT8C lcdHtoA(INT8U hnib){
+    INT8C asciic;
+    INT8U hnmask = hnib & 0x0fu; /* Take care of any upper nibbles */
+    if(hnmask <= 9U){
+        asciic = (INT8C)(hnmask + 0x30U);
+    }else{
+        asciic = (INT8C)(hnmask + 0x37U);
+    }
+    return asciic;
 }
