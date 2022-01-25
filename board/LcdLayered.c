@@ -23,6 +23,7 @@
 * 03/09/2019 Changed parameters for LcdDispDecWord. Brad Cowgill
 * 03/13/2019 Changed LcdCursorDispMode() to be private, now lcdCursorDispMode(). BJC
 * 02/18/2020 Fixed col input error check. TDM
+* 1/24/2022  Ported code for displaying hexword from LCD module. Code by TDM, ported by Dominic Danis
 *****************************************************************************************
 * Header Files - Dependencies
 *****************************************************************************************/
@@ -87,8 +88,6 @@ static void lcdFlattenLayers(LCD_BUFFER *dest_buffer,
 static void lcdWriteBuffer(LCD_BUFFER *buffer);
 static void lcdMoveCursor(INT8U row, INT8U col);
 static void lcdCursorDispMode(INT8U on, INT8U blink);
-
-//IS THIS OKAY
 static INT8C lcdHtoA(INT8U hnib);
 
 /*************************************************************************
@@ -165,9 +164,9 @@ static void lcdLayeredTask(void *p_arg) {
     while(1) {
     
         // Wait for an lcd layer to be modified
-    	DB3_TURN_OFF();
+    	DB4_TURN_OFF();
         OSTaskSemPend(0,OS_OPT_PEND_BLOCKING,(CPU_TS *)0, &os_err);
-    	DB3_TURN_ON();
+    	DB4_TURN_ON();
         
         lcdFlattenLayers(&lcdBuffer, (LCD_BUFFER *)&lcdLayers);
         lcdWriteBuffer(&lcdBuffer);
@@ -946,8 +945,11 @@ static void lcdDly500ns(void){
     }
 }
 
-
-//IS THIS OKAY?
+/********************************************************************
+** LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib)
+*   Displays a hex word on LCD, ported from LCD.c
+*   Code by TDM, ported by Dominic Danis
+********************************************************************/
 void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib) {
     INT8U currentnib;
     INT8U col_increment = 0;
@@ -964,7 +966,10 @@ void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const 
     }
 
 }
-
+/*******************************************************************************************
+* lcdHtoA() - Converts a hex nibble to ASCII - private
+* hnib is the byte with the LSN to be sent.
+*******************************************************************************************/
 static INT8C lcdHtoA(INT8U hnib){
     INT8C asciic;
     INT8U hnmask = hnib & 0x0fu; /* Take care of any upper nibbles */

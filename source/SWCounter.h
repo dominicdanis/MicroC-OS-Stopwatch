@@ -1,3 +1,11 @@
+/*****************************************************************************************
+* SWCounter
+* This module includes counting functionality for a basic stopwatch - swCounterTask.
+* Takes control for counting state through mutex and writes present count state through
+* simple synchronization buffer
+*
+* Last edit Dominic Danis 1/24/2022
+*****************************************************************************************/
 #include "MCUType.h"
 #include "os.h"
 

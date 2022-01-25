@@ -21,6 +21,7 @@
 * 01/18/2018 Changed to replace includes.h TDM
 * 01/20/2019 Changed for MCUXpresso and added LcdDispDecWord(). TDM
 * 03/09/2019 Added additional defines and modified LcdDispDecWord. Brad Cowgill
+* 01/24/2022  Ported code for displaying hexword from LCD module. Code by TDM, ported by Dominic Danis
 ****************************************************************************************/
 
 #ifndef LCD_DEF
@@ -91,11 +92,7 @@ void LcdDispByte(INT8U row,INT8U col,INT8U layer,INT8U byte);
                         
 void LcdDispDecWord(INT8U row, INT8U col, INT8U layer, INT32U binword, INT8U field, LCD_MODE mode);
 void LcdDispClear(INT8U layer);
-
-
-//IS THIS OKAY?
 void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib);
-
 void LcdDispClrLine(INT8U row, INT8U layer);
 INT8U LcdCursor(INT8U row, INT8U col, INT8U layer, INT8U on, INT8U blink);
 void LcdHideLayer(INT8U layer);

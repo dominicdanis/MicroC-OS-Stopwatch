@@ -132,9 +132,9 @@ static void keyTask(void *p_arg) {
     KEYSTATES KeyState = KEY_OFF;
     (void)p_arg;
     while(1){
-		DB4_TURN_OFF();
+		DB3_TURN_OFF();
         OSTimeDly(8,OS_OPT_TIME_PERIODIC,&os_err);
-		DB4_TURN_ON();
+		DB3_TURN_ON();
         while(os_err != OS_ERR_NONE){           /* Error Trap                        */
         }
         cur_key = keyScan();

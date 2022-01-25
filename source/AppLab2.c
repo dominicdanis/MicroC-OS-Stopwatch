@@ -1,5 +1,9 @@
 /*****************************************************************************************
-* HEADER WILL GO HERE
+* AppLab2
+* This is the main module for a stopwatch application. It includes a startup task with initializations,
+* and tasks for implementing UI and stopwatch display on LCD.
+*
+* Last edit Dominic Danis 1/24/2022
 *****************************************************************************************/
 #include "os.h"
 #include "app_cfg.h"
@@ -13,49 +17,51 @@
 
 #define START_ADDR 0x00000000
 #define END_ADDR 0x001FFFFF
-
 /*****************************************************************************************
 * Allocate task control blocks
 *****************************************************************************************/
 static OS_TCB appTaskStartTCB;
 static OS_TCB appTimerControlTaskTCB;
 static OS_TCB appTimerDisplayTaskTCB;
-
+/*****************************************************************************************
+* Mutex Allocation
+*****************************************************************************************/
 static OS_MUTEX appTimerCountKey;
-
 /*****************************************************************************************
 * Allocate task stack space.
 *****************************************************************************************/
 static CPU_STK appTaskStartStk[APP_CFG_TASK_START_STK_SIZE];
 static CPU_STK appTimerControlTaskStk[APP_CFG_TIMER_CTRL_STK_SIZE];
 static CPU_STK appTimerDisplayTaskStk[APP_CFG_TIMER_DISP_STK_SIZE];
-
 /*****************************************************************************************
 * Task Function Prototypes. 
 *****************************************************************************************/
 static void  appStartTask(void *p_arg);
 static void  appTimerControlTask(void *p_arg);
 static void  appTimerDisplayTask(void *p_arg);
-
+/*****************************************************************************************
+* Getter and setter for shared resource
+*****************************************************************************************/
 static void appSetTimerCount(INT8C *numStart);
 static INT8C * appGetTimerCount(void);
-
-
+/*****************************************************************************************
+* UI states
+*****************************************************************************************/
 typedef enum {CLEAR,COUNT,HOLD} SW_STATE;
-static SW_STATE TimeState;
+static SW_STATE appTimeState;
+/*****************************************************************************************
+* Shared data for appTimerCountKey Mutex
+*****************************************************************************************/
 static INT8C *appTimerCount;
-static INT8C OutputTime[8] = "00:00.00";
+static INT8C appOutputTime[8] = "00:00.00";
 /*****************************************************************************************
 * main()
 *****************************************************************************************/
 void main(void) {
-
     OS_ERR  os_err;
-
     K65TWR_BootClock();
     CPU_IntDis();
     OSInit(&os_err);
-
     OSTaskCreate(&appTaskStartTCB,
                  "Start Task",
                  appStartTask,
@@ -71,23 +77,20 @@ void main(void) {
                  &os_err);
     OSStart(&os_err);
 }
-
 /*****************************************************************************************
 * STARTUP TASK
-* This should run once and be deleted. Could restart everything by creating.
+* This task runs once and is the deleted. Initializes modules, creates tasks and displays
+* initial checksum
 *****************************************************************************************/
 static void appStartTask(void *p_arg) {
-
     OS_ERR os_err;
     INT16U checksum;
     (void)p_arg;
-
     OS_CPU_SysTickInitFreq(SYSTEM_CLOCK);
     GpioDBugBitsInit();
     OSMutexCreate(&appTimerCountKey,
                   "Timer Count Mutex",
                   &os_err);
-    TimeState = CLEAR;
     OSTaskCreate(&appTimerControlTaskTCB,
                 "appTimerControl ",
                 appTimerControlTask,
@@ -119,14 +122,17 @@ static void appStartTask(void *p_arg) {
     LcdInit();
     checksum = MemChkSum((INT8U *)START_ADDR, (INT8U *)END_ADDR);
     LcdDispHexWord(LCD_ROW_2,LCD_COL_1,LCD_LAYER_STARTUP,(const INT32U)checksum, 4);
+    appTimeState = CLEAR;
     OSTaskDel((OS_TCB *)0, &os_err);
 }
 
 /*****************************************************************************************
-* TASK HEADER
+* appTimerControlTask
+*
+* Task implementing stopwatch UI. Pends on input from keypad and either sends control
+* to counter module or displays current stopwatch count in LCD
 *****************************************************************************************/
 static void appTimerControlTask(void *p_arg){
-
     OS_ERR os_err;
     INT8U kchar;
     INT8C *current;
@@ -138,21 +144,21 @@ static void appTimerControlTask(void *p_arg){
         DB0_TURN_ON();
         switch (kchar){
             case '*':
-            switch(TimeState){
+            switch(appTimeState){
                 case CLEAR:
-                    TimeState = COUNT;
+                    appTimeState = COUNT;
                     SWCntrCntrlSet(1,0);                //start counting
                     break;
                 case COUNT:
-                    TimeState = HOLD;
+                    appTimeState = HOLD;
                     SWCntrCntrlSet(0,0);                //hold counting
                     break;
                 case HOLD:
-                    TimeState = CLEAR;
+                    appTimeState = CLEAR;
                     SWCntrCntrlSet(0,1);                //clear counter
                     break;
                 default:
-                    TimeState = CLEAR;
+                    appTimeState = CLEAR;
                     SWCntrCntrlSet(1,0);                //clear counter
                     break;
             }
@@ -168,10 +174,11 @@ static void appTimerControlTask(void *p_arg){
 }
 
 /*****************************************************************************************
-* TASK HEADER
+* appTimerDisplayTask
+* Runs when count is updated  - from SWCounter module. Computes time based on count, stores in a
+* shared resource and displays on LCD
 *****************************************************************************************/
 static void appTimerDisplayTask(void *p_arg){
-
     OS_ERR os_err;
     INT32U remain;
     INT32U out;
@@ -183,38 +190,43 @@ static void appTimerDisplayTask(void *p_arg){
         DB1_TURN_ON();
         remain = out%60000;
         out = (out-remain)/60000;
-        OutputTime[0] = (INT8C)(out+48);
+        appOutputTime[0] = (INT8C)(out+48);
         out = remain;
         remain = out%6000;
         out = (out-remain)/6000;
-        OutputTime[1] = (INT8C)(out+48);
+        appOutputTime[1] = (INT8C)(out+48);
         out = remain;
         remain = out%1000;
         out = (out-remain)/1000;
-        OutputTime[3] = (INT8C)(out+48);
+        appOutputTime[3] = (INT8C)(out+48);
         out = remain;
         remain = out%100;
         out = (out-remain)/100;
-        OutputTime[4] = (INT8C)(out+48);
+        appOutputTime[4] = (INT8C)(out+48);
         out = remain;
         remain = out%10;
         out = (out-remain)/10;
-        OutputTime[6] = (INT8C)(out+48);
-        OutputTime[7] = (INT8C)(remain+48);
-        LcdDispString(LCD_ROW_1,LCD_COL_1,LCD_LAYER_TIMER,(INT8C *const)OutputTime);
-        appSetTimerCount((INT8C *)OutputTime);
+        appOutputTime[6] = (INT8C)(out+48);
+        appOutputTime[7] = (INT8C)(remain+48);
+        LcdDispString(LCD_ROW_1,LCD_COL_1,LCD_LAYER_TIMER,(INT8C *const)appOutputTime);
+        appSetTimerCount((INT8C *)appOutputTime);
     }
 }
 
-/********************************************************************************/
-
+/*****************************************************************************************
+* appSetTimerCount
+* Setter for timerCount shared variable. Is accessed via mutex
+*****************************************************************************************/
 static void appSetTimerCount(INT8C *current_time){
     OS_ERR os_err;
     OSMutexPend(&appTimerCountKey, 0, OS_OPT_PEND_BLOCKING, (CPU_TS *)0, &os_err);
     appTimerCount = current_time;
     OSMutexPost(&appTimerCountKey, OS_OPT_POST_NONE, &os_err);
 }
-
+/*****************************************************************************************
+* appGetTimerCount
+* Getter for timerCount shared variable. Is accessed via mutex
+*****************************************************************************************/
 static INT8C * appGetTimerCount(){
     OS_ERR os_err;
     INT8C *current_time;
