@@ -21,6 +21,7 @@
 * 01/18/2018 Changed to replace includes.h TDM
 * 01/20/2019 Changed for MCUXpresso and added LcdDispDecWord(). TDM
 * 03/09/2019 Added additional defines and modified LcdDispDecWord. Brad Cowgill
+* 01/24/2022  Ported code for displaying hexword from LCD module. Code by TDM, ported by Dominic Danis
 ****************************************************************************************/
 
 #ifndef LCD_DEF
@@ -30,12 +31,14 @@
 *              Range from 0 to (LCD_NUM_LAYERS - 1)                      *
 *              Arranged from largest number on top, down to 0 on bottom. *
 *************************************************************************/
-#define LCD_NUM_LAYERS 4
+#define LCD_NUM_LAYERS 3
 
-#define SEND_A_LAYER 3
-#define SEND_B_LAYER 2
-#define SEND_C_LAYER 1
-#define SEND_D_LAYER 0
+#define LCD_LAYER_TIMER 2
+#define LCD_LAYER_LAP 1
+#define LCD_LAYER_STARTUP 0
+
+//Define for byte length
+#define LCD_BYTE 4
 
 /*************************************************************************
 * LCD Rows and Columns Defines
@@ -92,7 +95,7 @@ void LcdDispByte(INT8U row,INT8U col,INT8U layer,INT8U byte);
                         
 void LcdDispDecWord(INT8U row, INT8U col, INT8U layer, INT32U binword, INT8U field, LCD_MODE mode);
 void LcdDispClear(INT8U layer);
-
+void LcdDispHexWord(INT8U row, INT8U col, INT8U layer, const INT32U word, const INT8U num_nib);
 void LcdDispClrLine(INT8U row, INT8U layer);
 INT8U LcdCursor(INT8U row, INT8U col, INT8U layer, INT8U on, INT8U blink);
 void LcdHideLayer(INT8U layer);
