@@ -17,6 +17,13 @@
 
 #define START_ADDR 0x00000000
 #define END_ADDR 0x001FFFFF
+#define TMIN_CONV 60000
+#define MIN_CONV 6000
+#define TSEC_CONV 1000
+#define SEC_CONV 100
+#define TMS_CONV 10
+#define ASCII_OFFSET 48
+#define MAX_TIME 359999
 /*****************************************************************************************
 * Allocate task control blocks
 *****************************************************************************************/
@@ -53,7 +60,7 @@ static SW_STATE appTimeState;
 * Shared data for appTimerCountKey Mutex
 *****************************************************************************************/
 static INT8C *appTimerCount;
-static INT8C appOutputTime[8] = "00:00.00";
+static INT8C appOutputTime[] = "00:00.00";
 /*****************************************************************************************
 * main()
 *****************************************************************************************/
@@ -121,7 +128,7 @@ static void appStartTask(void *p_arg) {
     KeyInit();
     LcdInit();
     checksum = MemChkSum((INT8U *)START_ADDR, (INT8U *)END_ADDR);
-    LcdDispHexWord(LCD_ROW_2,LCD_COL_1,LCD_LAYER_STARTUP,(const INT32U)checksum, 4);
+    LcdDispHexWord(LCD_ROW_2,LCD_COL_1,LCD_LAYER_STARTUP,(const INT32U)checksum, LCD_BYTE);
     appTimeState = CLEAR;
     OSTaskDel((OS_TCB *)0, &os_err);
 }
@@ -188,26 +195,30 @@ static void appTimerDisplayTask(void *p_arg){
         DB1_TURN_OFF();
         out = SWCountPend(0,&os_err);
         DB1_TURN_ON();
-        remain = out%60000;
-        out = (out-remain)/60000;
-        appOutputTime[0] = (INT8C)(out+48);
+        if(out>MAX_TIME){                                         //never count past 59:59.99
+            out = MAX_TIME;
+        }
+        else{}
+        remain = out%TMIN_CONV;                                   //compute and store time
+        out = (out-remain)/TMIN_CONV;
+        appOutputTime[0] = (INT8C)(out+ASCII_OFFSET);
         out = remain;
-        remain = out%6000;
-        out = (out-remain)/6000;
-        appOutputTime[1] = (INT8C)(out+48);
+        remain = out%MIN_CONV;
+        out = (out-remain)/MIN_CONV;
+        appOutputTime[1] = (INT8C)(out+ASCII_OFFSET);
         out = remain;
-        remain = out%1000;
-        out = (out-remain)/1000;
-        appOutputTime[3] = (INT8C)(out+48);
+        remain = out%TSEC_CONV;
+        out = (out-remain)/TSEC_CONV;
+        appOutputTime[3] = (INT8C)(out+ASCII_OFFSET);
         out = remain;
-        remain = out%100;
-        out = (out-remain)/100;
-        appOutputTime[4] = (INT8C)(out+48);
+        remain = out%SEC_CONV;
+        out = (out-remain)/SEC_CONV;
+        appOutputTime[4] = (INT8C)(out+ASCII_OFFSET);
         out = remain;
-        remain = out%10;
-        out = (out-remain)/10;
-        appOutputTime[6] = (INT8C)(out+48);
-        appOutputTime[7] = (INT8C)(remain+48);
+        remain = out%TMS_CONV;
+        out = (out-remain)/TMS_CONV;
+        appOutputTime[6] = (INT8C)(out+ASCII_OFFSET);
+        appOutputTime[7] = (INT8C)(remain+ASCII_OFFSET);
         LcdDispString(LCD_ROW_1,LCD_COL_1,LCD_LAYER_TIMER,(INT8C *const)appOutputTime);
         appSetTimerCount((INT8C *)appOutputTime);
     }

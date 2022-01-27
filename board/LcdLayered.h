@@ -37,6 +37,9 @@
 #define LCD_LAYER_LAP 1
 #define LCD_LAYER_STARTUP 0
 
+//Define for byte length
+#define LCD_BYTE 4
+
 /*************************************************************************
 * LCD Rows and Columns Defines
 *
