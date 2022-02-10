@@ -59,7 +59,7 @@ static SW_STATE appTimeState;
 /*****************************************************************************************
 * Shared data for appTimerCountKey Mutex
 *****************************************************************************************/
-static INT8C *appTimerCount;
+static INT8C *appTimerCount; //>>>can not be pointer, no storage -1req
 static INT8C appOutputTime[] = "00:00.00";
 /*****************************************************************************************
 * main()
@@ -171,7 +171,7 @@ static void appTimerControlTask(void *p_arg){
             }
                 break;
             case '#':
-                current = appGetTimerCount();
+                current = appGetTimerCount(); //>>>must have different layer -1req
                 LcdDispString(LCD_ROW_2,LCD_COL_1,LCD_LAYER_TIMER,(INT8C *const)current);
                 break;
             default:
